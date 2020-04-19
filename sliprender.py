@@ -25,6 +25,13 @@ pygame.display.init()
 w = 640
 h = 480
 
+# in GUI.PNG
+arrow_x = 70
+arrow_green_y = 64
+arrow_red_y = 70
+arrow_w = 5
+arrow_h = 6
+
 WAYPOINT_DEBUG = False
 
 scr = pygame.display.set_mode((w, h), DOUBLEBUF | OPENGL)
@@ -34,6 +41,40 @@ def find_tile_ctrl(d, tile):
         for x in range(sz):
             if d[y*sz + x + sz*sz*2] == tile:
                 return (x, y)
+
+def blitcolor(x, y, w, h):
+    x0 = x
+    y0 = y
+    x1 = x+w
+    y1 = y+h
+
+    glVertex2f(x0, y0)
+    glVertex2f(x1, y0)
+    glVertex2f(x1, y1)
+    glVertex2f(x0, y1)
+
+def blitgui(x, y, tx, ty, tw, th, scale=1):
+    x0 = x
+    y0 = y
+    x1 = x+tw*scale
+    y1 = y+th*scale
+    s0 = tx / 256
+    t0 = 1 - ty / 256
+    s1 = (tx+tw) / 256
+    t1 = 1 - (ty+th) / 256
+
+    glTexCoord2f(s0, t0)
+    glVertex2f(x0, y0)
+
+    glTexCoord2f(s1, t0)
+    glVertex2f(x1, y0)
+
+    glTexCoord2f(s1, t1)
+    glVertex2f(x1, y1)
+
+    glTexCoord2f(s0, t1)
+    glVertex2f(x0, y1)
+
 
 def blitquad(x, y, ch, rotation_deg=0, scale=1.):
     x0 = x * ts - ts * (scale - 1) / 2
@@ -54,11 +95,11 @@ def blitquad(x, y, ch, rotation_deg=0, scale=1.):
     p2 = ((p2 - center).rotate(rotation_deg)) + center
     p3 = ((p3 - center).rotate(rotation_deg)) + center
 
-    s = int(ch % 16) * img.width / ts
-    t = int(ch / 16) * img.height / ts
+    s = int(ch % 16) * 256 / ts
+    t = int(ch / 16) * 256 / ts
 
-    fw = 1 / img.width
-    fh = 1 / img.height
+    fw = 1 / 256
+    fh = 1 / 256
 
     s0 = s * fw
     s1 = (s+ts) * fw
@@ -93,20 +134,26 @@ def pal0_to_rgba(img):
     del px
     return newimg
 
-img = pal0_to_rgba(PIL.Image.open(fn.replace('TRACK.DAT', 'TILES.PNG')))
-data = img.tobytes("raw", "RGBA", 0, -1)
-tex = glGenTextures(1)
-glBindTexture(GL_TEXTURE_2D, tex)
-glBindTexture(GL_TEXTURE_2D, tex)
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
+def load_texture(filename):
+    img = pal0_to_rgba(PIL.Image.open(filename))
+    data = img.tobytes("raw", "RGBA", 0, -1)
+    tex = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, tex)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
+    return tex
+
+tex = load_texture(fn.replace('TRACK.DAT', 'TILES.PNG'))
+gui = load_texture('SLIPSW/ASSETS/GUI.PNG')
 
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 glClearColor(1., 0., 0., 1.)
+
+glBindTexture(GL_TEXTURE_2D, tex)
 glEnable(GL_TEXTURE_2D)
 
 def capture_display_list(func):
@@ -165,7 +212,7 @@ class Player(object):
         self.idx = idx
         self.reset()
         self.gotcash = 0
-        self.points = 0
+        self.points = 5
 
     def reset(self):
         # Find first tile in the third layer (ships + waypoints)
@@ -191,11 +238,14 @@ class Player(object):
 
     def start_celebrating(self):
         self.celebrating = True
-        self.points += 1
+        if self.points < 10:
+            self.points += 1
         self.stop_moving()
 
     def kill_off(self):
         self.alive = False
+        if self.points > 0:
+            self.points -= 1
         self.stop_moving()
 
     def __repr__(self):
@@ -280,7 +330,8 @@ while True:
 
     if len(alive_players) == 1 and PLAYERS != 1 and celebration_started is None:
         alive_players[0].start_celebrating()
-        celebration_started = time.time()
+        if alive_players[0].points < 10:
+            celebration_started = time.time()
 
     if celebration_started is not None:
         if time.time() - celebration_started > 5:
@@ -431,6 +482,33 @@ while True:
             glColor4f(1., 1., 1., 1.)
             blitquad(int(player.ppos.x-player.ship_height/2)/ts, int(player.ppos.y-player.ship_height/2)/ts, FIRST_SHIP_TILE+player.idx, player.rotation)
     glEnd()
+
+    glBindTexture(GL_TEXTURE_2D, gui)
+
+    glLoadIdentity()
+    glOrtho(0, w, h, 0, 0, 1)
+
+    glDisable(GL_TEXTURE_2D)
+
+    glBegin(GL_QUADS)
+    y = 10
+    scale = 4
+
+    glColor4f(0, 0, 0, 0.5)
+    blitcolor(5, y - 5, arrow_w * scale + 10,
+            (players[0].points + players[1].points) * scale * arrow_h + 10)
+    glEnd()
+
+    glEnable(GL_TEXTURE_2D)
+    glBegin(GL_QUADS)
+    glColor4f(1., 1., 1., 1)
+    for i in range(players[0].points + players[1].points):
+        blitgui(10, y, arrow_x, arrow_red_y if i<players[0].points else arrow_green_y,
+                arrow_w, arrow_h, scale)
+        y += arrow_h * scale
+    glEnd()
+
+    glBindTexture(GL_TEXTURE_2D, tex)
 
     # update screen
     pygame.display.set_caption(f'{fn} - cash: {players[0].gotcash} - lap: {players[0].lap}')
