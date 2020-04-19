@@ -33,11 +33,11 @@ def find_tile_ctrl(d, tile):
             if d[y*sz + x + sz*sz*2] == tile:
                 return (x, y)
 
-def blitquad(x, y, ch, rotation_deg=0):
-    x0 = x * ts
-    x1 = x0 + ts
-    y0 = y * ts
-    y1 = y0 + ts
+def blitquad(x, y, ch, rotation_deg=0, scale=1.):
+    x0 = x * ts - ts * (scale - 1) / 2
+    x1 = x0 + ts * scale
+    y0 = y * ts - ts * (scale - 1) / 2
+    y1 = y0 + ts * scale
 
     xo = (x0 + x1) / 2
     yo = (y0 + y1) / 2
@@ -167,6 +167,9 @@ reverse = False
 gotcash = 0
 next_waypoint = 0
 lap = 0
+player_celebrating = False
+player_ship_height = 2
+player_ship_dheight = 0
 
 def collides_with(ppos, x, y):
     return math.sqrt((x-ppos.x)**2 + (y-ppos.y)**2) < ts
@@ -187,6 +190,8 @@ while True:
                 accelerate = True
             elif evt.key == K_DOWN:
                 reverse = True
+            elif evt.key == K_SPACE:
+                player_celebrating = not player_celebrating
         elif evt.type == KEYUP:
             if evt.key == K_LEFT or evt.key == K_RIGHT:
                 steer = 0
@@ -215,10 +220,10 @@ while True:
         blitquad(x, y, FIRST_CASH_TILE + int(time.time()*8) % (LAST_CASH_TILE - FIRST_CASH_TILE + 1))
 
     # render player ship (with shadow)
-    glColor4f(1., 1., 1., 0.5)
-    blitquad(int(ppos.x+2)/ts, int(ppos.y+2)/ts, FIRST_SHIP_SHADOW_TILE, rotation)
+    glColor4f(1., 1., 1., 1. / (1 + player_ship_height/4))
+    blitquad(int(ppos.x)/ts, int(ppos.y)/ts, FIRST_SHIP_SHADOW_TILE, rotation, 1. + (player_ship_height-2) / 32)
     glColor4f(1., 1., 1., 1.)
-    blitquad(int(ppos.x)/ts, int(ppos.y)/ts, FIRST_SHIP_TILE, rotation)
+    blitquad(int(ppos.x-player_ship_height/2)/ts, int(ppos.y-player_ship_height/2)/ts, FIRST_SHIP_TILE, rotation)
     glEnd()
 
     waypoint_distances = [(math.sqrt((ppos.x-x*16)**2+(ppos.y-y*16)**2), i, x, y)
@@ -261,6 +266,9 @@ while True:
             speed *= -0.5
             hit = True
 
+    if player_celebrating:
+        rotation += 4
+
     # Steering
     rotation += steer
 
@@ -275,6 +283,19 @@ while True:
         speed = max(-maxspeed, speed - .2)
     else:
         speed *= 0.9
+
+    # Height
+    player_ship_dheight -= 1
+    player_ship_height += player_ship_dheight
+    if player_ship_height <= 2:
+        if abs(player_ship_dheight) > 2:
+            player_ship_dheight *= -0.8
+        else:
+            if player_celebrating:
+                player_ship_dheight = 10
+            else:
+                player_ship_dheight = 0
+        player_ship_height = 2
 
     # Draw foreground on top
     glCallList(fglist)
