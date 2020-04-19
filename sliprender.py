@@ -228,7 +228,7 @@ class Player(object):
         return next(dist for (dist, i, x, y) in waypoint_distances if i == self.next_waypoint)
 
 
-PLAYERS = 4
+PLAYERS = 1
 
 players = [Player(i) for i in range(PLAYERS)]
 
@@ -336,6 +336,10 @@ while True:
     for player in players:
         waypoint_distances = player.get_waypoint_distances()
 
+        current_waypoint = (player.next_waypoint + len(waypoints) - 1) % len(waypoints)
+        previous_waypoint = (player.next_waypoint + len(waypoints) - 2) % len(waypoints)
+        #print(f'curr: {current_waypoint}, next: {player.next_waypoint}')
+
         for pos, (distance, i, x, y) in enumerate(sorted(waypoint_distances)):
             glColor4f(1., 1., 1., 1.)
             glBegin(GL_QUADS)
@@ -353,13 +357,22 @@ while True:
                         print('next lap')
                         player.next_waypoint = 0
                         player.lap += 1
+                elif previous_waypoint == i:
+                    player.next_waypoint = current_waypoint
+                    if player.next_waypoint == len(waypoints)-1:
+                        print('prev lap')
+                        player.lap -= 1
+                    print(f'back to current waypoint {player.next_waypoint}')
 
+            if player.next_waypoint == i:
+                glColor4f(0., 1., 0., 1. if WAYPOINT_DEBUG else 0)
+            elif current_waypoint == i:
+                glColor4f(1., 0., 0., 1. if WAYPOINT_DEBUG else 0)
+            elif previous_waypoint == i:
                 glColor4f(1., 1., 0., 1. if WAYPOINT_DEBUG else 0)
             else:
-                if player.next_waypoint == i:
-                    glColor4f(0., 1., 0., 1. if WAYPOINT_DEBUG else 0)
-                else:
-                    glColor4f(1., 1., 0., 0.1 if WAYPOINT_DEBUG else 0)
+                glColor4f(0., 0., 0., 0.)
+
             glVertex2f(x*16+8, y*16+8)
             glVertex2f(player.ppos.x+8, player.ppos.y+8)
             glEnd()
