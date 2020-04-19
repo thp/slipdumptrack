@@ -5,7 +5,7 @@
 
 import glob, os, random, math, time, pygame, PIL.Image
 
-from sliptiles import CLASSIFICATION, FIRST_SHIP_TILE, FIRST_SHIP_SHADOW_TILE, FIRST_CASH_TILE, LAST_CASH_TILE
+from sliptiles import *
 from pygame.math import Vector2
 
 from pygame.locals import *
@@ -154,15 +154,19 @@ fglist = make_fg_list()
 # Find first tile in the third layer (ships + waypoints)
 px, py = find_tile_ctrl(d, FIRST_SHIP_TILE)
 
+waypoints = [find_tile_ctrl(d, FIRST_WAYPOINT_TILE+i) for i in range(8)]
+
 ppos = Vector2((px, py)) * ts
 steer = 0
 rotation = 0
-zoomin = 2
+zoomin = 1
 speed = 0
 maxspeed = 6
 accelerate = False
 reverse = False
 gotcash = 0
+next_waypoint = 0
+lap = 0
 
 def collides_with(ppos, x, y):
     return math.sqrt((x-ppos.x)**2 + (y-ppos.y)**2) < ts
@@ -217,6 +221,38 @@ while True:
     blitquad(int(ppos.x)/ts, int(ppos.y)/ts, FIRST_SHIP_TILE, rotation)
     glEnd()
 
+    waypoint_distances = [(math.sqrt((ppos.x-x*16)**2+(ppos.y-y*16)**2), i, x, y)
+                          for i, (x, y) in enumerate(waypoints)]
+
+    for pos, (distance, i, x, y) in enumerate(sorted(waypoint_distances)):
+        glColor4f(1., 1., 1., 1.)
+        glBegin(GL_QUADS)
+        blitquad(x, y, FIRST_WAYPOINT_TILE+i)
+        glEnd()
+
+        glDisable(GL_TEXTURE_2D)
+        glBegin(GL_LINES)
+        if pos == 0:
+            if next_waypoint == i:
+                next_waypoint += 1
+                print(f'next waypoint reached {next_waypoint}')
+
+                if next_waypoint == len(waypoints):
+                    print('next lap')
+                    next_waypoint = 0
+                    lap += 1
+
+            glColor4f(1., 1., 0., 1.)
+        else:
+            if next_waypoint == i:
+                glColor4f(0., 1., 0., 1.)
+            else:
+                glColor4f(1., 1., 0., 0.1)
+        glVertex2f(x*16+8, y*16+8)
+        glVertex2f(ppos.x+8, ppos.y+8)
+        glEnd()
+        glEnable(GL_TEXTURE_2D)
+
     # Wall hit checks
     hit = False
     for x, y in walls:
@@ -244,5 +280,5 @@ while True:
     glCallList(fglist)
 
     # update screen
-    pygame.display.set_caption(f'{fn} - cash: {gotcash}')
+    pygame.display.set_caption(f'{fn} - cash: {gotcash} - lap: {lap}')
     pygame.display.flip()
