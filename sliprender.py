@@ -278,7 +278,7 @@ while True:
 
     alive_players = [player for player in players if player.alive]
 
-    if len(alive_players) == 1 and celebration_started is None:
+    if len(alive_players) == 1 and PLAYERS != 1 and celebration_started is None:
         alive_players[0].start_celebrating()
         celebration_started = time.time()
 
@@ -302,7 +302,16 @@ while True:
     # Draw background below
     glCallList(bglist)
 
-    # TODO: Player<->Player Collision
+    # Player<->Player Collision
+    for idx, player_a in enumerate(alive_players):
+        for player_b in alive_players[idx+1:]:
+            if collides_with(player_a.ppos, player_b.ppos.x, player_b.ppos.y):
+                move = Vector2(player_b.ppos.x-player_a.ppos.x, player_b.ppos.y-player_a.ppos.y)
+                player_a.ppos -= move / 2
+                player_b.ppos += move / 2
+                # TODO: Move relative to direction/speed and collision position
+                player_a.speed *= -0.5
+                player_b.speed *= -0.5
 
     # Draw cash + cash collision
     glBegin(GL_QUADS)
