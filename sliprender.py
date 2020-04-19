@@ -229,6 +229,7 @@ class Player(object):
         self.reverse = False
         self.celebrating = False
         self.alive = True
+        self.keymap = {k: v[self.idx] for k, v in KEYMAP.items()}
 
     def stop_moving(self):
         self.accelerate = False
@@ -253,20 +254,20 @@ class Player(object):
 
     def handle(self, evt):
         if evt.type == KEYDOWN:
-            if evt.key == KEYMAP['left'][self.idx]:
+            if evt.key == self.keymap['left']:
                 self.steer = -3
-            elif evt.key == KEYMAP['right'][self.idx]:
+            elif evt.key == self.keymap['right']:
                 self.steer = +3
-            elif evt.key == KEYMAP['accelerate'][self.idx]:
+            elif evt.key == self.keymap['accelerate']:
                 self.accelerate = True
-            elif evt.key == KEYMAP['reverse'][self.idx]:
+            elif evt.key == self.keymap['reverse']:
                 self.reverse = True
         elif evt.type == KEYUP:
-            if evt.key == KEYMAP['left'][self.idx] or evt.key == KEYMAP['right'][self.idx]:
+            if evt.key == self.keymap['left'] or evt.key == self.keymap['right']:
                 self.steer = 0
-            elif evt.key == KEYMAP['accelerate'][self.idx]:
+            elif evt.key == self.keymap['accelerate']:
                 self.accelerate = False
-            elif evt.key == KEYMAP['reverse'][self.idx]:
+            elif evt.key == self.keymap['reverse']:
                 self.reverse = False
 
     def get_waypoint_distances(self):
