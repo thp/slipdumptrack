@@ -78,7 +78,7 @@ def blitquad(x, y, ch, rotation_deg=0, scale=1.):
     glVertex2f(p3.x, p3.y)
 
 # TODO: Track chooser
-fn = random.choice(glob.glob('SLIPSW/ASSETS/TRACKS/*/*/TRACK.DAT'))
+fn = random.choice(glob.glob('SLIP*/ASSETS/TRACKS/*/*/TRACK.DAT'))
 
 d = open(fn, 'rb').read()
 
@@ -228,7 +228,7 @@ class Player(object):
         return next(dist for (dist, i, x, y) in waypoint_distances if i == self.next_waypoint)
 
 
-PLAYERS = 1
+PLAYERS = 2
 
 players = [Player(i) for i in range(PLAYERS)]
 
@@ -358,11 +358,12 @@ while True:
                         player.next_waypoint = 0
                         player.lap += 1
                 elif previous_waypoint == i:
-                    player.next_waypoint = current_waypoint
-                    if player.next_waypoint == len(waypoints)-1:
-                        print('prev lap')
-                        player.lap -= 1
-                    print(f'back to current waypoint {player.next_waypoint}')
+                    ...
+                    #player.next_waypoint = current_waypoint
+                    #if player.next_waypoint == len(waypoints)-1:
+                    #    print('prev lap')
+                    #    player.lap -= 1
+                    #print(f'back to current waypoint {player.next_waypoint}')
 
             if player.next_waypoint == i:
                 glColor4f(0., 1., 0., 1. if WAYPOINT_DEBUG else 0)
